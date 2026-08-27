@@ -58,11 +58,13 @@ uvicorn main:app --reload --port 8000
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/` | API root descriptor and manifest | `200 OK` | — |
 | `GET` | `/health` | Server health check for uptime monitoring probes | `200 OK` | — |
-| `GET` | `/tasks` | Retrieve all in-memory tasks | `200 OK` | — |
+| `GET` | `/stats` | Aggregate task statistics (total, done, open) | `200 OK` | — |
+| `GET` | `/tasks` | Retrieve all in-memory tasks (supports `?done=` and `?search=`) | `200 OK` | — |
 | `GET` | `/tasks/{id}` | Retrieve a single task by its numeric ID | `200 OK` | `404 Not Found` |
 | `POST` | `/tasks` | Create a new task (requires non-empty `title` string) | `201 Created` | `400 Bad Request` |
 | `PUT` | `/tasks/{id}` | Update an existing task's `title` and/or `done` status | `200 OK` | `400 Bad Request`, `404 Not Found` |
 | `DELETE` | `/tasks/{id}` | Delete a task from memory by ID | `204 No Content` | `404 Not Found` |
+| `POST` | `/reset` | Restore tasks to default starter seed | `200 OK` | — |
 | `GET` | `/docs` | Interactive Swagger UI documentation playground | `200 OK` | — |
 
 ---
@@ -206,4 +208,17 @@ HTTP/1.1 204 No Content
 date: Thu, 27 Aug 2026 08:27:00 GMT
 server: uvicorn
 ```
+
+---
+
+## 💭 Experience Notes & Key Takeaways
+
+### My Experience
+As someone who has built with FastAPI in Python using AI without the basic knowledge, this has really helped me to understand what Python FastAPI can really do. It was a fun learning experience that finally made me fully understand what all of this is about. It made me truly understand how you could make CRUD endpoints, typing each syntax one by one and pretty much familiarizing myself for this. This is so useful and will definitely be a handy experience for my future projects!
+
+### Key Takeaways
+- **HTTP & REST Intuition**: Building endpoints step-by-step from scratch builds a real intuition for HTTP verbs (`GET`, `POST`, `PUT`, `DELETE`) and proper status codes (`200`, `201`, `204`, `400`, `404`, `500`).
+- **Defensive Validation**: Never trusting client input and enforcing clean request structures before mutating state.
+- **OpenAPI & Swagger UI**: How auto-generated interactive documentation bridges code implementation and developer ergonomics.
+- **Memory vs Persistence**: Understanding that in-memory state is transient across server reboots, laying the foundation for database persistence in Week 3.
 
