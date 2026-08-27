@@ -10,25 +10,27 @@ tasks = [
 ]
 
 
-# 1. Root Endpoints:
-@app.get("/")
+# 1. Root and Health Endpoints:
+@app.get("/", summary="API Root Descriptor", tags=["General"])
 def read_root():
+    """Returns metadata describing the API name, version, and available endpoints."""
     return {
         "name": "Task API",
         "version": "1.0",
         "endpoints": ["/tasks"]
     }
 
-@app.get("/health")
+@app.get("/health", summary="Health Check", tags=["General"])
 def health_check():
+    """Returns server health status for monitoring probes."""
     return {"status": "ok"}
 
 #2. Read endpoints with 404
-@app.get("/tasks")
+@app.get("/tasks", summary="List All Tasks", tags=["Tasks"])
 def get_tasks():
     return tasks
 
-@app.get("/tasks/{task_id}")
+@app.get("/tasks/{task_id}", summary="Get Task by ID", tags=["Tasks"])
 def get_task(task_id: int):
     for task in tasks:
         if task["id"] == task_id:
@@ -40,7 +42,7 @@ def get_task(task_id: int):
     )
 
 #3. Create a new task (POST /tasks)
-@app.post("/tasks")
+@app.post("/tasks", summary="Create a new task", tags=["Tasks"])
 async def create_task(request: Request):
     try:
         body = await request.json()
@@ -72,7 +74,7 @@ async def create_task(request: Request):
     )
 
 # 4. Update a task
-@app.put("/tasks/{task_id}")
+@app.put("/tasks/{task_id}", summary="Update a task", tags=["Tasks"])
 async def update_task(task_id: int, request: Request):
     target_task = None
     for task in tasks:
@@ -120,7 +122,7 @@ async def update_task(task_id: int, request: Request):
     return target_task
 
 #4. Deleting a task (DELETE /tasks/{task_id})]
-@app.delete("/tasks/{task_id}")
+@app.delete("/tasks/{task_id}", summary="Delete a task", tags=["Tasks"])
 def delete_task(task_id: int):
     # Find the task
     for task in tasks:
