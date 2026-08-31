@@ -8,7 +8,7 @@
 
 ## Tasks
 - [x] **Backend Track: Connecting Your CRUD to the Database (Assignment A2)**: Migrated in-memory storage to SQLite, parameterized SQL queries, DB Browser inspection, and complete documentation. See `backend/BE_W3A2/`.
-- [ ] **Backend Track: Containerize Your Stack (Assignment A3)**: Run PostgreSQL in Docker, wire FastAPI with psycopg driver, compose the entire stack, and verify persistence across volume restarts. See `backend/BE_W3A3/`.
+- [x] **Backend Track: Containerize Your Stack (Assignment A3)**: Run PostgreSQL in Docker, wire FastAPI with psycopg driver, compose the entire stack, and verify persistence across volume restarts. See `backend/BE_W3A3/`.
 - [ ] **AI Fluency Track**: See `fluency/`.
 
 ## Experience Notes
@@ -21,5 +21,6 @@
 
 ## Notes
 - Full project code, setup guides, and documentation live in `backend/BE_W3A2/` and `backend/BE_W3A3/`.
+
 
 
