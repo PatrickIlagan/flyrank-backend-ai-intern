@@ -1,5 +1,5 @@
 import sqlite3
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 DB_NAME = "tasks.db"
@@ -134,3 +134,101 @@ async def create_task(request: Request):
         status_code=201,
         content=new_task
     )
+
+# 4. Update a task (PUT /tasks/{task_id})
+@app.put("/tasks/{task_id}", summary="Update a task", tags=["Tasks"])
+async def update_task(task_id: int, request: Request):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if the task exists
+    cursor.execute("SELECT id, title, done FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Task {task_id} not found"}
+        )
+
+    # Parse incoming JSON
+    try:
+        body = await request.json()
+    except Exception:
+        conn.close()
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid or missing JSON body"}
+        )
+
+    if not isinstance(body, dict) or not body:
+        conn.close()
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Request body cannot be empty"}
+        )
+
+    current_title = row["title"]
+    current_done = row["done"]
+
+    # Validate title if provided
+    if "title" in body:
+        title_val = body["title"]
+        if not isinstance(title_val, str) or not title_val.strip():
+            conn.close()
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Title must be a non-empty string"}
+            )
+        current_title = title_val.strip()
+
+    # Validate done if provided
+    if "done" in body:
+        done_val = body["done"]
+        if not isinstance(done_val, bool):
+            conn.close()
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Done must be a boolean (true or false)"}
+            )
+        current_done = 1 if done_val else 0
+
+    # Execute SQL UPDATE query
+    cursor.execute(
+        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+        (current_title, current_done, task_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": task_id,
+        "title": current_title,
+        "done": bool(current_done)
+    }
+
+
+# 5. Delete a task (DELETE /tasks/{task_id})
+@app.delete("/tasks/{task_id}", summary="Delete a task", tags=["Tasks"])
+def delete_task(task_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if the task exists
+    cursor.execute("SELECT id FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Task {task_id} not found"}
+        )
+
+    # Execute SQL DELETE query
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+    return Response(status_code=204)
