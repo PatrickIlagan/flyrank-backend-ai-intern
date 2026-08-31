@@ -53,24 +53,54 @@ def read_root():
     return {
         "name": "Task API (SQLite)",
         "version": "2.0",
-        "endpoints": ["/tasks"]
+        "endpoints": ["/tasks", "/stats"]
     }
 
 @app.get("/health", summary="Health Check", tags=["General"])
 def health_check():
     return {"status": "ok"}
 
+@app.get("/stats", summary="Get task statistics", tags=["General"])
+def get_stats():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM tasks")
+    total = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM tasks WHERE done = 1")
+    done_count = cursor.fetchone()[0]
+    conn.close()
+    return {
+        "total": total,
+        "done": done_count,
+        "open": total - done_count
+    }
+
 
 # 2. Read Endpoints (Reads directly from SQLite tasks.db)
 @app.get("/tasks", summary="List All Tasks", tags=["Tasks"])
-def get_tasks():
+def get_tasks(done: bool | None = None, search: str | None = None):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, title, done FROM tasks")
+    
+    query = "SELECT id, title, done FROM tasks"
+    conditions = []
+    params = []
+    
+    if done is not None:
+        conditions.append("done = ?")
+        params.append(1 if done else 0)
+        
+    if search:
+        conditions.append("title LIKE ?")
+        params.append(f"%{search}%")
+        
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+        
+    cursor.execute(query, tuple(params))
     rows = cursor.fetchall()
     conn.close()
     
-    # Convert SQLite rows into clean JSON list
     return [{"id": row["id"], "title": row["title"], "done": bool(row["done"])} for row in rows]
 
 @app.get("/tasks/{task_id}", summary="Get Task by ID", tags=["Tasks"])
@@ -78,12 +108,10 @@ def get_task(task_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Use parameterized query to find the specific row safely
     cursor.execute("SELECT id, title, done FROM tasks WHERE id = ?", (task_id,))
     row = cursor.fetchone()
     conn.close()
     
-    # If no task with that ID exists in SQLite, return 404
     if row is None:
         return JSONResponse(
             status_code=404,
@@ -91,6 +119,18 @@ def get_task(task_id: int):
         )
         
     return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
+
+@app.post("/reset", summary="Reset default tasks", tags=["Tasks"])
+def reset_tasks():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM tasks")
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", ("Buy groceries", 0))
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", ("Read Week 3 Documentation", 1))
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", ("Connect CRUD to SQLite", 0))
+    conn.commit()
+    conn.close()
+    return {"message": "Tasks reset to default seed"}
 
 # 3. Create a new task (POST /tasks)
 @app.post("/tasks", summary="Create a new task", tags=["Tasks"])
