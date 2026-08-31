@@ -101,3 +101,32 @@ async def login(request: Request):
         }
     except Exception:
         return JSONResponse(status_code=401, content={"error": "Invalid login credentials"})
+
+# 3. Public Route (GET /public/info)
+@app.get("/public/info", summary="Public Open Information", tags=["Public"])
+def public_info():
+    return {
+        "message": "Welcome stranger! This info is public.",
+        "status": "unrestricted"
+    }
+
+
+# 4. Protected Route - Gate Check (GET /protected/profile)
+@app.get("/protected/profile", summary="User Profile (Protected)", tags=["Protected"])
+def get_profile(request: Request):
+    auth_header = request.headers.get("Authorization")
+
+    # If header is missing or does not follow 'Bearer <token>' format
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Access token required"}
+        )
+
+    # Extract the token
+    token = auth_header.split(" ")[1]
+
+    return {
+        "message": "Access token presented successfully",
+        "raw_token_preview": f"{token[:15]}..."
+    }
