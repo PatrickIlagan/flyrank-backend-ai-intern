@@ -23,6 +23,14 @@ Built for **FlyRank AI Backend Engineering Internship: Week 3 (Assignment A3: Co
 
 ---
 
+## 📸 Docker Desktop Verification
+
+Both the `api` (FastAPI) and `db` (PostgreSQL) services running simultaneously in Docker Desktop, connected over the private container network:
+
+![Docker Desktop](docker_screenshot.png)
+
+---
+
 ## Quickstart: One Command to Run Everything
 
 ### Prerequisites
