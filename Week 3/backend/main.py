@@ -53,7 +53,6 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
-
 @app.get("/tasks", summary="List All Tasks", tags=["Tasks"])
 def get_tasks():
     conn = get_db_connection()
@@ -63,3 +62,22 @@ def get_tasks():
     conn.close()
     
     return [{"id": row["id"], "title": row["title"], "done": bool(row["done"])} for row in rows]
+
+@app.get("/tasks/{task_id}", summary="Get Task by ID", tags=["Tasks"])
+def get_task(task_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Use parameterized query to find the specific row safely
+    cursor.execute("SELECT id, title, done FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    # If no task with that ID exists in SQLite, return 404
+    if row is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Task {task_id} not found"}
+        )
+        
+    return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
