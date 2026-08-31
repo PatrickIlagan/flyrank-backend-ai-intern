@@ -7,7 +7,7 @@
 - Maintain atomic stage commits and complete developer-facing documentation.
 
 ## Tasks
-- [ ] **Backend Track: Connecting Your CRUD to the Database (Assignment A2)**: Migrate in-memory storage to SQLite. See `backend/`.
+- [x] **Backend Track: Connecting Your CRUD to the Database (Assignment A2)**: Migrated in-memory storage to SQLite, parameterized SQL queries, DB Browser inspection, and complete documentation. See `backend/`.
 - [ ] **AI Fluency Track**: See `fluency/`.
 
 ## Experience Notes
@@ -19,5 +19,6 @@
 - TBD
 
 ## Notes
-- TBD
+- Full project code, setup guide, and documentation live in `backend/`.
+
 
