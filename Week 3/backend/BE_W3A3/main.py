@@ -1,4 +1,4 @@
-﻿import os
+import os
 import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
@@ -16,37 +16,43 @@ app = FastAPI(
     description="A persistent Task Management CRUD API backed by PostgreSQL running in Docker."
 )
 
+import time
+
 # Helper function to get a PostgreSQL database connection
 def get_db_connection():
     return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 # Initialize database table and seed starter data only if empty
 def init_db():
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                # 1. Create tasks table if it does not exist
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS tasks (
-                        id SERIAL PRIMARY KEY,
-                        title TEXT NOT NULL,
-                        done BOOLEAN NOT NULL DEFAULT FALSE
-                    );
-                """)
-                
-                # 2. Count existing rows
-                cursor.execute("SELECT COUNT(*) FROM tasks;")
-                row = cursor.fetchone()
-                count = row["count"] if row else 0
-                
-                # 3. Seed starter data only when table is completely empty
-                if count == 0:
-                    cursor.execute("INSERT INTO tasks (title, done) VALUES (%s, %s);", ("Buy groceries", False))
-                    cursor.execute("INSERT INTO tasks (title, done) VALUES (%s, %s);", ("Read Week 3 Documentation", True))
-                    cursor.execute("INSERT INTO tasks (title, done) VALUES (%s, %s);", ("Containerize CRUD with Docker", False))
-                    conn.commit()
-    except Exception as e:
-        print(f"Database initialization warning: {e}")
+    for attempt in range(10):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    # 1. Create tasks table if it does not exist
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS tasks (
+                            id SERIAL PRIMARY KEY,
+                            title TEXT NOT NULL,
+                            done BOOLEAN NOT NULL DEFAULT FALSE
+                        );
+                    """)
+                    
+                    # 2. Count existing rows
+                    cursor.execute("SELECT COUNT(*) FROM tasks;")
+                    row = cursor.fetchone()
+                    count = row["count"] if row else 0
+                    
+                    # 3. Seed starter data only when table is completely empty
+                    if count == 0:
+                        cursor.execute("INSERT INTO tasks (title, done) VALUES (%s, %s);", ("Buy groceries", False))
+                        cursor.execute("INSERT INTO tasks (title, done) VALUES (%s, %s);", ("Read Week 3 Documentation", True))
+                        cursor.execute("INSERT INTO tasks (title, done) VALUES (%s, %s);", ("Containerize CRUD with Docker", False))
+                        conn.commit()
+            print("Database initialized successfully!")
+            break
+        except Exception as e:
+            print(f"Waiting for database connection (attempt {attempt + 1}/10)...")
+            time.sleep(1)
 
 # Run database setup on startup
 init_db()
