@@ -7,7 +7,7 @@
 - Configure Swagger UI with interactive Authorize padlock and publish clean documentation.
 
 ## Tasks
-- [ ] **Backend Track: Auth - Login & Protect (Assignment A4)**: Implement Supabase Auth, JWT verification, protected routes, and Swagger UI Bearer security. See `backend/`.
+- [x] **Backend Track: Auth - Login & Protect (Assignment A4)**: Implemented Supabase Auth, JWT verification, reusable Bearer token dependency guard, Swagger UI Bearer security, and full documentation. See `backend/`.
 - [ ] **AI Fluency Track**: See `fluency/`.
 
 ## Experience Notes
@@ -20,4 +20,5 @@
 
 ## Notes
 - Full project code, setup guide, and documentation live in `backend/`.
+
 

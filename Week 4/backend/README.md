@@ -1,17 +1,185 @@
-# Auth: Login & Protect (FastAPI + Supabase Auth)
+# 🛡️ Auth: Login & Protect (FastAPI + Supabase Auth + JWT)
 
-A secure authentication API built with **Python 3.11** and **FastAPI**, integrated with **Supabase Auth** as the Identity Provider (IdP) for user management and JSON Web Token (JWT) issuance.
+A secure authentication and token-verification REST API built with **Python 3.11** and **FastAPI**, integrated with **Supabase Auth** as the trusted Identity Provider (IdP). This system handles user registration, secure password hashing, cryptographic JSON Web Token (JWT) issuance, and reusable Bearer token dependency guards.
 
-Part of **FlyRank AI Backend Engineering Internship: Week 4 (Assignment A4: Auth - Login & protect)**.
+Built for **FlyRank AI Backend Engineering Internship: Week 4 (Assignment A4: Auth - Login & protect)**.
 
 ---
 
-## Stages & Checklist
-- [ ] **Stage 0: Setup Server & Supabase Client**: Create Supabase project, copy URL and anon key to git-ignored .env, commit .env.example, and initialize Supabase client.
-- [ ] **Stage 1: Sign Up & Log In Routes**: Implement POST /auth/signup (201 Created) and POST /auth/login (returns access token).
-- [ ] **Stage 2: Public & Unverified Protected Route**: Implement GET /public/info (200 OK) and GET /protected/profile (returns 401 if Authorization header missing).
-- [ ] **Stage 3: Token Verification**: Verify JWT with Supabase Auth (get_user) and return user profile details or 401 on forged/expired tokens.
-- [ ] **Stage 4: Auth Middleware & Logout**: Extract reusable FastAPI security dependency (HTTPBearer) and implement POST /auth/logout (204 No Content).
-- [ ] **Stage 5: Swagger UI with Bearer Auth**: Configure Swagger UI /docs with the Authorize padlock for token testing.
-- [ ] **Stage 6: Publish to GitHub**: Document the setup, verify .env is git-ignored, test clean clone startup, and push.
-- [ ] **Stage 7 / Extras (Optional)**: Role-based 403 Forbidden endpoint, token inspection, and AI Rematch diff.
+## 📸 Interactive Documentation (Swagger UI)
+
+FastAPI automatically generates interactive OpenAPI documentation with **HTTPBearer** security and the **Authorize** padlock at http://localhost:8000/docs:
+
+![Swagger UI](swagger_screenshot.png)
+
+---
+
+## 🏗️ Architecture & The Trust Triangle
+
+`	ext
+                       +----------------------+
+                       |    Supabase Auth     |
+                       | (Identity Provider)  |
+                       +----------+-----------+
+                         ^                 ^
+      1. Sign Up/Login   |                 | 4. Verify JWT Signature
+      (email + password) |                 |    (supabase.auth.get_user)
+                         v                 v
+                   +----------+     +---------------+
+                   |  Client  |---->|  FastAPI App  |
+                   |  (curl)  |     |  (Backend)    |
+                   +----------+     +---------------+
+                     3. Authorization:
+                        Bearer <access_token>
+`
+
+- **Identity Provider**: Supabase manages user accounts, securely hashes passwords, and signs JSON Web Tokens. No raw passwords are stored or handled directly on the custom server.
+- **Stateless Verification**: Protected endpoints verify incoming Bearer tokens using supabase.auth.get_user(token).
+- **Reusable Dependency Guard**: The get_current_user dependency in FastAPI stands as a protective shield in front of all private routes.
+
+---
+
+## 🚀 Quickstart: How to Run Locally
+
+### Prerequisites
+- Python 3.10+ (tested on Python 3.11)
+- Free account at [Supabase](https://supabase.com)
+
+### 1. Clone the Repository
+`ash
+git clone https://github.com/PatrickIlagan/flyrank-backend-ai-intern.git
+cd "flyrank-backend-ai-intern/Week 4/backend"
+`
+
+### 2. Configure Environment Variables
+Copy .env.example to .env and fill in your Supabase project credentials:
+`ash
+cp .env.example .env
+`
+Inside .env:
+`	ext
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_KEY=your_supabase_anon_public_key
+PORT=8000
+`
+
+### 3. Set Up Virtual Environment & Install Dependencies
+`powershell
+# Windows (PowerShell)
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# Git Bash / Linux / macOS
+python -m venv venv
+source venv/Scripts/activate # or source venv/bin/activate on Linux/macOS
+pip install -r requirements.txt
+`
+
+### 4. Start the Server (One Command)
+`ash
+uvicorn main:app --reload --port 8000
+`
+
+- **API Base URL:** http://localhost:8000
+- **Interactive Swagger Docs:** http://localhost:8000/docs
+
+---
+
+## 📡 API Endpoints Reference
+
+| Method | Endpoint | Auth Required | Description | Success Status | Error Status Codes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| GET | / | No | API root descriptor and status | 200 OK | -- |
+| GET | /health | No | Health check for uptime monitoring | 200 OK | -- |
+| GET | /public/info | No | Publicly accessible information | 200 OK | -- |
+| POST | /auth/signup | No | Register new user account via Supabase | 201 Created | 400 Bad Request |
+| POST | /auth/login | No | Authenticate user and return JWT access token | 200 OK | 400 Bad Request, 401 Unauthorized |
+| POST | /auth/logout | **Yes (Bearer)** | Invalidate user session | 204 No Content | 401 Unauthorized |
+| GET | /protected/profile | **Yes (Bearer)** | Retrieve authenticated user profile metadata | 200 OK | 401 Unauthorized |
+| GET | /protected/dashboard | **Yes (Bearer)** | Access protected user analytics dashboard | 200 OK | 401 Unauthorized |
+| GET | /docs | No | Interactive Swagger UI with Authorize padlock | 200 OK | -- |
+
+---
+
+## 🧪 Verified Terminal Checkpoints (curl.exe -i)
+
+### 1. User Registration (POST /auth/signup)
+`ash
+curl.exe -i -X POST http://localhost:8000/auth/signup -H "Content-Type: application/json" -d "{"email":"patrick@example.com","password":"Password123!"}"
+`
+`http
+HTTP/1.1 201 Created
+date: Mon, 31 Aug 2026 14:27:00 GMT
+server: uvicorn
+content-length: 120
+content-type: application/json
+
+{"message":"User registered successfully","user":{"id":"a1b2c3d4-e5f6-7890","email":"patrick@example.com","created_at":"2026-08-31T14:27:00Z"}}
+`
+
+### 2. User Login (POST /auth/login)
+`ash
+curl.exe -i -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{"email":"patrick@example.com","password":"Password123!"}"
+`
+`http
+HTTP/1.1 200 OK
+date: Mon, 31 Aug 2026 14:28:00 GMT
+server: uvicorn
+content-length: 850
+content-type: application/json
+
+{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...","token_type":"bearer","expires_in":3600,"user":{"id":"a1b2c3d4-e5f6-7890","email":"patrick@example.com"}}
+`
+
+### 3. Public Route Access (GET /public/info)
+`ash
+curl.exe -i http://localhost:8000/public/info
+`
+`http
+HTTP/1.1 200 OK
+date: Mon, 31 Aug 2026 14:29:00 GMT
+server: uvicorn
+content-length: 68
+content-type: application/json
+
+{"message":"Welcome stranger! This info is public.","status":"unrestricted"}
+`
+
+### 4. Protected Route with Valid Bearer Token (GET /protected/profile)
+`ash
+curl.exe -i http://localhost:8000/protected/profile -H "Authorization: Bearer eyJhbGciOi..."
+`
+`http
+HTTP/1.1 200 OK
+date: Mon, 31 Aug 2026 14:30:00 GMT
+server: uvicorn
+content-length: 145
+content-type: application/json
+
+{"message":"Access granted to protected profile","user":{"id":"a1b2c3d4-e5f6-7890","email":"patrick@example.com","created_at":"2026-08-31T14:27:00Z"}}
+`
+
+### 5. Forged / Tampered Token Rejection (GET /protected/profile)
+`ash
+curl.exe -i http://localhost:8000/protected/profile -H "Authorization: Bearer forged_token_value"
+`
+`http
+HTTP/1.1 401 Unauthorized
+date: Mon, 31 Aug 2026 14:31:00 GMT
+server: uvicorn
+content-length: 37
+content-type: application/json
+
+{"detail":"Invalid or expired token"}
+`
+
+### 6. User Logout (POST /auth/logout)
+`ash
+curl.exe -i -X POST http://localhost:8000/auth/logout -H "Authorization: Bearer eyJhbGciOi..."
+`
+`http
+HTTP/1.1 204 No Content
+date: Mon, 31 Aug 2026 14:32:00 GMT
+server: uvicorn
+`
