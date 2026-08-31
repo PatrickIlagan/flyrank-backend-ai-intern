@@ -1,5 +1,5 @@
 import sqlite3
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 DB_NAME = "tasks.db"
@@ -10,15 +10,18 @@ app = FastAPI(
     description="A persistent Task Management CRUD API backed by SQLite."
 )
 
+# Helper function to get a database connection with dictionary-like row access
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
+# Initialize database table and seed starter data only if empty
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    # 1. Create tasks table if it does not exist
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,9 +30,11 @@ def init_db():
         )
     """)
     
+    # 2. Count existing rows to prevent duplicate seeding
     cursor.execute("SELECT COUNT(*) FROM tasks")
     count = cursor.fetchone()[0]
     
+    # 3. Seed starter data only when table is completely empty
     if count == 0:
         cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", ("Buy groceries", 0))
         cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", ("Read Week 3 Documentation", 1))
@@ -38,9 +43,11 @@ def init_db():
         
     conn.close()
 
+# Run database setup on startup
 init_db()
 
 
+# 1. Root and Health Endpoints
 @app.get("/", summary="API Root Descriptor", tags=["General"])
 def read_root():
     return {
@@ -53,6 +60,8 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+
+# 2. Read Endpoints (Reads directly from SQLite tasks.db)
 @app.get("/tasks", summary="List All Tasks", tags=["Tasks"])
 def get_tasks():
     conn = get_db_connection()
@@ -61,6 +70,7 @@ def get_tasks():
     rows = cursor.fetchall()
     conn.close()
     
+    # Convert SQLite rows into clean JSON list
     return [{"id": row["id"], "title": row["title"], "done": bool(row["done"])} for row in rows]
 
 @app.get("/tasks/{task_id}", summary="Get Task by ID", tags=["Tasks"])
@@ -81,3 +91,46 @@ def get_task(task_id: int):
         )
         
     return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
+
+# 3. Create a new task (POST /tasks)
+@app.post("/tasks", summary="Create a new task", tags=["Tasks"])
+async def create_task(request: Request):
+    # Parse incoming JSON body
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid or missing JSON body"}
+        )
+
+    # Validate title
+    title = body.get("title")
+    if not title or not isinstance(title, str) or not title.strip():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Title is required and cannot be empty"}
+        )
+
+    # Insert into SQLite database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO tasks (title, done) VALUES (?, ?)",
+        (title.strip(), 0)
+    )
+    conn.commit()
+    
+    new_id = cursor.lastrowid
+    conn.close()
+
+    new_task = {
+        "id": new_id,
+        "title": title.strip(),
+        "done": False
+    }
+
+    return JSONResponse(
+        status_code=201,
+        content=new_task
+    )
