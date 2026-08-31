@@ -66,7 +66,7 @@ def health_check():
     return {"status": "ok"}
 
 
-# 2. Read Endpoints (Reads directly from PostgreSQL container)
+# 1. Read all tasks (GET /tasks)
 @app.get("/tasks", summary="List All Tasks", tags=["Tasks"])
 def get_tasks():
     with get_db_connection() as conn:
@@ -74,3 +74,21 @@ def get_tasks():
             cursor.execute("SELECT id, title, done FROM tasks ORDER BY id ASC;")
             rows = cursor.fetchall()
             return [{"id": row["id"], "title": row["title"], "done": row["done"]} for row in rows]
+
+# 2. Read single task by ID (GET /tasks/{task_id})
+@app.get("/tasks/{task_id}", summary="Get Task by ID", tags=["Tasks"])
+def get_task(task_id: int):
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            # Use %s placeholder to query PostgreSQL safely
+            cursor.execute("SELECT id, title, done FROM tasks WHERE id = %s;", (task_id,))
+            row = cursor.fetchone()
+            
+            # If task doesn't exist, return 404
+            if row is None:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": f"Task {task_id} not found"}
+                )
+                
+            return {"id": row["id"], "title": row["title"], "done": row["done"]}
