@@ -111,22 +111,43 @@ def public_info():
     }
 
 
-# 4. Protected Route - Gate Check (GET /protected/profile)
+# 4. Protected Route - Verified Profile (GET /protected/profile)
 @app.get("/protected/profile", summary="User Profile (Protected)", tags=["Protected"])
 def get_profile(request: Request):
     auth_header = request.headers.get("Authorization")
 
-    # If header is missing or does not follow 'Bearer <token>' format
+    # 1. Check if Authorization header is present
     if not auth_header or not auth_header.startswith("Bearer "):
         return JSONResponse(
             status_code=401,
             content={"error": "Access token required"}
         )
 
-    # Extract the token
-    token = auth_header.split(" ")[1]
+    # 2. Extract raw token string
+    token = auth_header.split(" ")[1].strip()
 
-    return {
-        "message": "Access token presented successfully",
-        "raw_token_preview": f"{token[:15]}..."
-    }
+    # 3. Verify token with Supabase Auth
+    try:
+        user_response = supabase.auth.get_user(token)
+        user = user_response.user
+
+        if not user:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid or expired token"}
+            )
+
+        return {
+            "message": "Access granted to protected profile",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "created_at": str(user.created_at)
+            }
+        }
+    except Exception:
+        # If token is tampered with, expired, or invalid
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Invalid or expired token"}
+        )
