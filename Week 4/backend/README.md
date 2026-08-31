@@ -106,7 +106,7 @@ uvicorn main:app --reload --port 8000
 
 ### 1. User Registration (POST /auth/signup)
 `ash
-curl.exe -i -X POST http://localhost:8000/auth/signup -H "Content-Type: application/json" -d "{"email":"patrick@example.com","password":"Password123!"}"
+curl.exe -i -X POST http://localhost:8000/auth/signup -H "Content-Type: application/json" -d "{\"email\":\"patrick@example.com\",\"password\":\"Password123!\"}"
 `
 `http
 HTTP/1.1 201 Created
@@ -120,7 +120,7 @@ content-type: application/json
 
 ### 2. User Login (POST /auth/login)
 `ash
-curl.exe -i -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{"email":"patrick@example.com","password":"Password123!"}"
+curl.exe -i -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{\"email\":\"patrick@example.com\",\"password\":\"Password123!\"}"
 `
 `http
 HTTP/1.1 200 OK
@@ -183,3 +183,16 @@ HTTP/1.1 204 No Content
 date: Mon, 31 Aug 2026 14:32:00 GMT
 server: uvicorn
 `
+
+---
+
+## 💭 Experience Notes
+
+### My Experience
+Finally understood how endpoints of Login and Authentication works especially with those JWT tokens and never knew that each user actually gets very long predefined tokens for security. I do build lots of login pages in both backend and frontend but have never really considered how the workflow actually works using Supabase. I've built some apps here and there with supabase but this enlightened me to actually pay more attention to the authentication and security part of a user's account with my application/program.
+
+### Key Takeaways
+- **JWT Cryptography**: Understanding that a JSON Web Token is a mathematically signed access pass consisting of Header, Payload, and Signature, rendering tampering impossible.
+- **Identity Provider Abstraction**: Leaning on a dedicated IdP (Supabase Auth) for secure password hashing and token issuance rather than rolling custom cryptography.
+- **Reusable Dependency Guards**: Enforcing authentication via FastAPI Depends(get_current_user) and HTTPBearer so all private routes are protected without repetitive code.
+- **Stateless vs. Stateful Auth**: Experiencing how stateless Bearer tokens allow servers to authenticate users on every incoming request without maintaining server-side session memory.
