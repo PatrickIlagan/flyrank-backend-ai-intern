@@ -123,3 +123,17 @@ Static HTML scraping with Requests and Beautiful Soup cannot execute JavaScript.
 2. **Never Bypass Defenses**: Never attempt to circumvent login screens, paywalls, CAPTCHAs, or IP blocks.
 3. **Collect Only What You Need**: Limit scope strictly to relevant data and never hoard unnecessary user or proprietary information.
 
+---
+
+## 💭 Experience Notes
+
+### My Experience
+This is really cool! I haven't really experimented much with scraping or getting data from websites but this is a really good track to know what is important and what is not like being polite to the admin's server by introducing ourselves. It also came across to me how important error validation and reporting could really be a lifesaver especially when the app/web gets bigger. Caching is also another thing I was quite curious about and how it works, and honestly this helped visualize it better. Overall, a pretty interesting experience reading and testing all the codes.
+
+### Key Takeaways
+- **Scraping Politeness & Transparency**: Introducing the scraper via a custom User-Agent, adding deliberate delays, and respecting server bandwidth.
+- **The Power of Local Caching**: Saving raw HTML to disk during development so repetitive testing never hammers the target website.
+- **Data Hygiene with Pydantic**: Quarantining malformed records into `errors.json` so `books.json` remains strictly schema-compliant.
+- **Resilience and Observability**: Handling page failures gracefully so bad URLs never crash the entire pipeline, and using `run-report.json` for honest job audits.
+
+
