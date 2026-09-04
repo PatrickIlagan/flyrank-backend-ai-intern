@@ -29,30 +29,57 @@ class BookSchema(BaseModel):
     source_page: str = Field(...)
     fetched_at: str = Field(...)
 
-# 3. Polite Fetcher with Cache
-def fetch_page(url: str, cache_filename: str) -> tuple[str, bool]:
+# 3. Resilient Fetcher with Retry Rules & Cache
+def fetch_page(url: str, cache_filename: str, stats: dict) -> tuple[Optional[str], bool]:
     cache_path = os.path.join(CACHE_DIR, cache_filename)
     
+    # 1. Check local cache
     if os.path.exists(cache_path):
+        stats["cache_hits"] += 1
         with open(cache_path, "r", encoding="utf-8") as f:
             html = f.read()
         return html, True
 
+    # 2. Live request with smart retry logic
     os.makedirs(CACHE_DIR, exist_ok=True)
-    time.sleep(DELAY_BETWEEN_REQUESTS)
-    print(f"[FETCH] Live page: {url}...")
-    response = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SECONDS)
+    max_attempts = 2 # Initial attempt + 1 retry for server errors/timeouts
     
-    if response.status_code != 200:
-        raise RuntimeError(f"Failed to fetch {url}: HTTP status {response.status_code}")
-    
-    with open(cache_path, "w", encoding="utf-8") as f:
-        f.write(response.text)
-        
-    return response.text, False
+    for attempt in range(1, max_attempts + 1):
+        try:
+            time.sleep(DELAY_BETWEEN_REQUESTS)
+            stats["pages_fetched"] += 1
+            print(f"[FETCH] (Attempt {attempt}) {url}...")
+            response = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SECONDS)
+            
+            # Non-retryable client errors: 404 (Not Found) or 403 (Forbidden)
+            if response.status_code in (403, 404):
+                print(f"[SKIP] Non-retryable HTTP {response.status_code} for {url}")
+                return None, False
+                
+            # Retryable server errors (5xx)
+            if response.status_code >= 500:
+                print(f"[RETRY WARNING] HTTP {response.status_code} on attempt {attempt}")
+                if attempt < max_attempts:
+                    time.sleep(1.0)
+                    continue
+                return None, False
+                
+            if response.status_code == 200:
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    f.write(response.text)
+                return response.text, False
+                
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            print(f"[TIMEOUT/NETWORK ERROR] {exc} on attempt {attempt}")
+            if attempt < max_attempts:
+                time.sleep(1.0)
+                continue
+            return None, False
+
+    return None, False
 
 # 4. Crawler: Discover First 3 Catalogue Pages
-def crawl_catalogue(start_url: str, max_pages: int = 3) -> tuple[list[dict], int]:
+def crawl_catalogue(start_url: str, max_pages: int, stats: dict) -> tuple[list[dict], int]:
     current_url = start_url
     discovered_books = []
     pages_crawled = 0
@@ -60,9 +87,11 @@ def crawl_catalogue(start_url: str, max_pages: int = 3) -> tuple[list[dict], int
     while current_url and pages_crawled < max_pages:
         pages_crawled += 1
         cache_name = f"catalogue-page-{pages_crawled}.html"
-        html, was_cached = fetch_page(current_url, cache_name)
-        status = "CACHE HIT" if was_cached else "FETCH"
-        print(f"[{status}] Catalogue page {pages_crawled}: {current_url}")
+        html, was_cached = fetch_page(current_url, cache_name, stats)
+        
+        if not html:
+            print(f"[ERROR] Could not load catalogue page: {current_url}")
+            break
 
         soup = BeautifulSoup(html, "html.parser")
         book_links = soup.select("article.product_pod h3 a")
@@ -84,23 +113,25 @@ def crawl_catalogue(start_url: str, max_pages: int = 3) -> tuple[list[dict], int
 
     return discovered_books, pages_crawled
 
-# 5. Normalizer: Clean Raw Price String to Float
+# 5. Price Cleaner
 def clean_price(price_text: str) -> float:
     cleaned = re.sub(r"[^\d.]", "", price_text)
     return float(cleaned) if cleaned else 0.0
 
-# 6. Extractor: Parse Detail Page for a Single Book
-def extract_book_record(product_url: str, source_page: str) -> dict:
+# 6. Detail Extractor
+def extract_book_record(product_url: str, source_page: str, stats: dict) -> Optional[dict]:
     path_parts = [p for p in urlparse(product_url).path.split("/") if p and p != "index.html"]
     slug = path_parts[-1] if path_parts else "book"
     cache_filename = f"book-{slug}.html"
 
-    html, was_cached = fetch_page(product_url, cache_filename)
+    html, _ = fetch_page(product_url, cache_filename, stats)
+    if not html:
+        return None
+
     soup = BeautifulSoup(html, "html.parser")
-    
     product_main = soup.select_one(".product_main")
     if not product_main:
-        raise ValueError(f"Product main area not found for {product_url}")
+        return None
 
     title_el = product_main.select_one("h1")
     title = title_el.get_text(strip=True) if title_el else "Unknown Title"
@@ -136,13 +167,29 @@ def extract_book_record(product_url: str, source_page: str) -> dict:
         "fetched_at": fetched_at
     }
 
-# 7. Main Runner
+# 7. Main Pipeline Runner
 def main():
+    start_time_iso = datetime.now(timezone.utc).isoformat()
+    start_perf = time.perf_counter()
+
+    stats = {
+        "start_time": start_time_iso,
+        "catalogue_pages": 0,
+        "pages_fetched": 0,
+        "cache_hits": 0,
+        "valid_records": 0,
+        "invalid_records": 0,
+        "failed_pages": 0,
+        "target_site": "https://books.toscrape.com/"
+    }
+
     start_url = "https://books.toscrape.com/catalogue/page-1.html"
-    print("--- Running Stage 4: Clean, Validate, and Store ---")
-    
-    raw_books, pages_count = crawl_catalogue(start_url, max_pages=3)
-    
+    print("--- Running Stage 5: Failure Survival & Run Report ---")
+
+    raw_books, pages_count = crawl_catalogue(start_url, max_pages=3, stats=stats)
+    stats["catalogue_pages"] = pages_count
+
+    # Deduplicate books
     seen_urls = set()
     unique_books = []
     for b in raw_books:
@@ -150,49 +197,58 @@ def main():
             seen_urls.add(b["product_url"])
             unique_books.append(b)
 
-    print(f"\nProcessing {len(unique_books)} unique books...")
-    
+    # DELIBERATE TEST INJECTION: Add 1 fake/broken URL to prove resilience!
+    fake_book = {
+        "product_url": "https://books.toscrape.com/catalogue/deliberate-broken-book_9999/index.html",
+        "source_page": "https://books.toscrape.com/catalogue/page-3.html"
+    }
+    unique_books.append(fake_book)
+    print(f"\nQueueing {len(unique_books)} books for extraction (includes 1 deliberate broken URL)...")
+
     valid_records = []
     error_records = []
 
     for item in unique_books:
+        raw_record = extract_book_record(item["product_url"], item["source_page"], stats)
+        
+        if raw_record is None:
+            stats["failed_pages"] += 1
+            error_records.append({
+                "product_url": item["product_url"],
+                "error": "Failed to fetch HTML or missing product content (HTTP 404/5xx or timeout)"
+            })
+            continue
+
         try:
-            raw_record = extract_book_record(item["product_url"], item["source_page"])
-            
-            # Validate with Pydantic
             validated = BookSchema(**raw_record)
             valid_records.append(validated.model_dump())
         except ValidationError as ve:
+            stats["invalid_records"] += 1
             error_records.append({
                 "product_url": item["product_url"],
                 "error": str(ve)
             })
-        except Exception as e:
-            error_records.append({
-                "product_url": item["product_url"],
-                "error": str(e)
-            })
 
-    # Ensure output directory exists
+    stats["valid_records"] = len(valid_records)
+    stats["duration_seconds"] = round(time.perf_counter() - start_perf, 2)
+
+    # Save outputs
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    
-    # Store valid records idempotently
     books_file = os.path.join(OUTPUT_DIR, "books.json")
     with open(books_file, "w", encoding="utf-8") as f:
         json.dump(valid_records, f, indent=2, ensure_ascii=False)
-        
-    # Store errors if any
+
     errors_file = os.path.join(OUTPUT_DIR, "errors.json")
     with open(errors_file, "w", encoding="utf-8") as f:
         json.dump(error_records, f, indent=2, ensure_ascii=False)
 
-    print("\n--- Checkpoint Summary ---")
-    print(f"Validated books stored in {books_file}: {len(valid_records)}")
-    print(f"Errors recorded in {errors_file}: {len(error_records)}")
-    if valid_records:
-        first = valid_records[0]
-        print(f"Sample book: '{first['title']}' | Price GBP: {first['price_gbp']} (type: {type(first['price_gbp']).__name__})")
-        print(f"URL format valid: {first['product_url'].startswith('https://')}")
+    report_file = os.path.join(OUTPUT_DIR, "run-report.json")
+    with open(report_file, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2)
+
+    print("\n--- Checkpoint: Run Report ---")
+    print(json.dumps(stats, indent=2))
+    print(f"\nFinal Status: {len(valid_records)} good records saved; {stats['failed_pages']} failed page survived cleanly!")
 
 if __name__ == "__main__":
     main()

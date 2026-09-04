@@ -1,1 +1,6 @@
-[]
+[
+  {
+    "product_url": "https://books.toscrape.com/catalogue/deliberate-broken-book_9999/index.html",
+    "error": "Failed to fetch HTML or missing product content (HTTP 404/5xx or timeout)"
+  }
+]

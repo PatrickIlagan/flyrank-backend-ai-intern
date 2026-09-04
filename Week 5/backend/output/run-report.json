@@ -1,0 +1,11 @@
+{
+  "start_time": "2026-09-04T16:35:21.444529+00:00",
+  "catalogue_pages": 3,
+  "pages_fetched": 1,
+  "cache_hits": 63,
+  "valid_records": 60,
+  "invalid_records": 0,
+  "failed_pages": 1,
+  "target_site": "https://books.toscrape.com/",
+  "duration_seconds": 1.95
+}
