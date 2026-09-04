@@ -1,47 +1,84 @@
 ﻿import os
+import time
 import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
-# 1. Polite Configuration
+# 1. Configuration
 USER_AGENT = "FlyRankInternship-A9/1.0 (+https://github.com/PatrickIlagan/flyrank-backend-ai-intern)"
 HEADERS = {"User-Agent": USER_AGENT}
 TIMEOUT_SECONDS = 10
+DELAY_BETWEEN_REQUESTS = 0.5
 CACHE_DIR = "cache"
 
-# 2. Fetch with Local Caching
-def fetch_page(url: str, cache_filename: str) -> str:
+# 2. Fetcher with Cache
+def fetch_page(url: str, cache_filename: str) -> tuple[str, bool]:
     cache_path = os.path.join(CACHE_DIR, cache_filename)
     
-    # Check if we already downloaded this page before
+    # Return cached HTML if it exists
     if os.path.exists(cache_path):
         with open(cache_path, "r", encoding="utf-8") as f:
             html = f.read()
-        print(f"[CACHE HIT] Loaded from {cache_path} ({len(html)} bytes)")
-        return html
+        return html, True
 
-    # If not cached, fetch it politely from the live web
+    # Otherwise fetch live
     os.makedirs(CACHE_DIR, exist_ok=True)
+    time.sleep(DELAY_BETWEEN_REQUESTS) # Polite rate limit
     print(f"[FETCH] Requesting live page: {url}...")
     response = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SECONDS)
     
-    # Strict status validation
     if response.status_code != 200:
         raise RuntimeError(f"Failed to fetch {url}: HTTP status {response.status_code}")
     
-    # Save to local cache
     with open(cache_path, "w", encoding="utf-8") as f:
         f.write(response.text)
         
-    print(f"[FETCH SUCCESS] Saved to {cache_path} ({len(response.text)} bytes, status {response.status_code})")
-    return response.text
+    return response.text, False
 
-# 3. Main Runner
+# 3. Crawler: Discover First 3 Catalogue Pages
+def crawl_catalogue(start_url: str, max_pages: int = 3) -> tuple[list[str], int]:
+    current_url = start_url
+    all_book_urls = []
+    pages_crawled = 0
+
+    while current_url and pages_crawled < max_pages:
+        pages_crawled += 1
+        cache_name = f"catalogue-page-{pages_crawled}.html"
+        html, was_cached = fetch_page(current_url, cache_name)
+        status = "CACHE HIT" if was_cached else "FETCH"
+        print(f"[{status}] Catalogue page {pages_crawled}: {current_url}")
+
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Extract book links (each book is inside an article.product_pod h3 a)
+        book_links = soup.select("article.product_pod h3 a")
+        for link in book_links:
+            href = link.get("href")
+            absolute_url = urljoin(current_url, href)
+            all_book_urls.append(absolute_url)
+
+        # Look for the 'next' page button
+        next_button = soup.select_one("li.next a")
+        if next_button:
+            next_href = next_button.get("href")
+            current_url = urljoin(current_url, next_href)
+        else:
+            current_url = None
+
+    return all_book_urls, pages_crawled
+
+# 4. Main Runner
 def main():
-    target_url = "https://books.toscrape.com/catalogue/page-1.html"
-    cache_file = "catalogue-page-1.html"
+    start_url = "https://books.toscrape.com/catalogue/page-1.html"
+    print("--- Running Stage 2: Discovering Catalogue Pages ---")
     
-    print("--- Running Stage 1 Scraper ---")
-    html = fetch_page(target_url, cache_file)
-    print(f"Page ready for parsing! Length: {len(html)} characters.")
+    book_urls, pages_count = crawl_catalogue(start_url, max_pages=3)
+    
+    # Deduplicate while preserving order
+    unique_urls = list(dict.fromkeys(book_urls))
+    
+    print("\n--- Checkpoint Summary ---")
+    print(f"catalogue_pages={pages_count}, discovered={len(book_urls)}, unique_urls={len(unique_urls)}")
 
 if __name__ == "__main__":
     main()
