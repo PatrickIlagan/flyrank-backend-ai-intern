@@ -7,7 +7,7 @@
 - Validate scraped records using Pydantic schemas and survive broken pages with a run report.
 
 ## Tasks
-- [ ] **Backend Track: The Polite Scraper (Assignment A9)**: Build a 7-stage polite scraping pipeline for Books to Scrape. See `backend/`.
+- [x] **Backend Track: The Polite Scraper (Assignment A9)**: Built a 7-stage polite scraping pipeline for Books to Scrape with caching, Beautiful Soup parsing, Pydantic schema validation, and failure survival. See `backend/`.
 - [ ] **AI Fluency Track**: See `fluency/`.
 
 ## Experience Notes
@@ -20,4 +20,5 @@
 
 ## Notes
 - Full project code, setup guide, and documentation live in `backend/`.
+
 
