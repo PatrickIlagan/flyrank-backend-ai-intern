@@ -1,0 +1,71 @@
+{
+  "passed": 8,
+  "total": 8,
+  "accuracy_pct": 100.0,
+  "cases": [
+    {
+      "id": 1,
+      "input": "I need a copy of my VAT receipt for my company tax filing.",
+      "expected": "billing",
+      "actual": "billing",
+      "passed": true,
+      "reason": "Customer is requesting a copy of their VAT receipt, which is a billing/invoice-related request for tax filing purposes."
+    },
+    {
+      "id": 2,
+      "input": "Please cancel my pro tier subscription immediately and stop all future charges.",
+      "expected": "billing",
+      "actual": "billing",
+      "passed": true,
+      "reason": "Customer is requesting immediate cancellation of their pro tier subscription and wants future charges stopped."
+    },
+    {
+      "id": 3,
+      "input": "The export button is completely broken and nothing downloads when I click it.",
+      "expected": "bug",
+      "actual": "bug",
+      "passed": true,
+      "reason": "The export button fails to trigger a download, indicating a broken UI feature."
+    },
+    {
+      "id": 4,
+      "input": "URGENT: The production API is throwing 500 errors and our app is down.",
+      "expected": "bug",
+      "actual": "bug",
+      "passed": true,
+      "reason": "Production API is returning 500 errors causing the app to be down, indicating a critical system failure."
+    },
+    {
+      "id": 5,
+      "input": "It would be great to have dark mode in the dashboard interface.",
+      "expected": "feature",
+      "actual": "feature",
+      "passed": true,
+      "reason": "Customer is suggesting a new feature (dark mode) for the dashboard interface."
+    },
+    {
+      "id": 6,
+      "input": "Do you have any plans to integrate with Slack webhook notifications?",
+      "expected": "feature",
+      "actual": "feature",
+      "passed": true,
+      "reason": "User is asking about future integration with Slack webhook notifications, which is a feature request."
+    },
+    {
+      "id": 7,
+      "input": "What is the best recipe for baking chocolate chip cookies?",
+      "expected": "other",
+      "actual": "other",
+      "passed": true,
+      "reason": "Message is off-topic and not related to customer support."
+    },
+    {
+      "id": 8,
+      "input": "Hello is anyone listening to this channel?",
+      "expected": "other",
+      "actual": "other",
+      "passed": true,
+      "reason": "Message is a general greeting and not a support request."
+    }
+  ]
+}

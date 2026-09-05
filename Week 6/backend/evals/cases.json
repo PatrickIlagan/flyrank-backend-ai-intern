@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "input": "I need a copy of my VAT receipt for my company tax filing.",
+    "expected_category": "billing",
+    "description": "Standard billing receipt request"
+  },
+  {
+    "id": 2,
+    "input": "Please cancel my pro tier subscription immediately and stop all future charges.",
+    "expected_category": "billing",
+    "description": "Subscription cancellation query"
+  },
+  {
+    "id": 3,
+    "input": "The export button is completely broken and nothing downloads when I click it.",
+    "expected_category": "bug",
+    "description": "Functional bug report"
+  },
+  {
+    "id": 4,
+    "input": "URGENT: The production API is throwing 500 errors and our app is down.",
+    "expected_category": "bug",
+    "description": "High urgency production crash bug"
+  },
+  {
+    "id": 5,
+    "input": "It would be great to have dark mode in the dashboard interface.",
+    "expected_category": "feature",
+    "description": "User interface feature suggestion"
+  },
+  {
+    "id": 6,
+    "input": "Do you have any plans to integrate with Slack webhook notifications?",
+    "expected_category": "feature",
+    "description": "Integration feature request"
+  },
+  {
+    "id": 7,
+    "input": "What is the best recipe for baking chocolate chip cookies?",
+    "expected_category": "other",
+    "description": "Off-topic query (unsure rule test)"
+  },
+  {
+    "id": 8,
+    "input": "Hello is anyone listening to this channel?",
+    "expected_category": "other",
+    "description": "Ambiguous greeting / test message"
+  }
+]
