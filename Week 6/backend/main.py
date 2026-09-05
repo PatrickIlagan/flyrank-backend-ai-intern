@@ -1,5 +1,8 @@
 import os
+import json
+from pathlib import Path
 from dotenv import load_dotenv
+from openai import OpenAI
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -14,7 +17,19 @@ app = FastAPI(
     description="A resilient customer support message triage API backed by an LLM."
 )
 
-# Custom 400 Bad Request handler for validation errors
+# 1. Initialize OpenAI-compatible Client
+base_url = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+api_key = os.environ.get("LLM_API_KEY", "")
+model_name = os.environ.get("LLM_MODEL", "openrouter/free")
+
+client = OpenAI(base_url=base_url, api_key=api_key)
+
+# 2. Load Prompt Specification from File
+PROMPT_FILE = Path(__file__).parent / "prompts" / "triage-v1.md"
+with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+    SYSTEM_PROMPT = f.read()
+
+# 3. Custom 400 Validation Handler
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
@@ -30,6 +45,7 @@ def read_root():
     return {
         "status": "online",
         "service": "support-triage-ai",
+        "model": model_name,
         "endpoints": ["/triage", "/health"]
     }
 
@@ -39,7 +55,7 @@ def health_check():
 
 @app.post("/triage", response_model=TriageResponse, summary="Triage Customer Support Message", tags=["AI Triage"])
 async def triage_message(payload: TriageRequest):
-    # Check Stub Mode (saves quota during development)
+    # Stub Mode Check
     if os.environ.get("LLM_STUB") == "1":
         return TriageResponse(
             category=CategoryEnum.BILLING,
@@ -48,5 +64,30 @@ async def triage_message(payload: TriageRequest):
             reason="[STUB] Predefined classification for development testing."
         )
 
-    # (Stage 2 will wire live model calls here)
-    raise HTTPException(status_code=501, detail="Live LLM call will be wired in Stage 2")
+    # Live LLM Call (Stage 2)
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            temperature=0.0, # Deterministic, zero creativity
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": payload.text}
+            ]
+        )
+        
+        raw_content = response.choices[0].message.content.strip()
+        
+        # Clean any surrounding markdown code fences if model returned them
+        if raw_content.startswith("```"):
+            lines = raw_content.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            raw_content = "\n".join(lines).strip()
+            
+        parsed_data = json.loads(raw_content)
+        return TriageResponse(**parsed_data)
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"LLM call failed: {str(exc)}")
