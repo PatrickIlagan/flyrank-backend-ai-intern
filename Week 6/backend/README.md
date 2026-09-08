@@ -169,3 +169,17 @@ Every call logs structured token usage:
 ## What I Would Fix With Another Day
 
 With another day, I would implement **in-memory request caching** (hashing incoming text combined with prompt version) to return cached classifications for repeated common support questions, and build a local **FastText / embedding pre-filter** to classify trivial 99% confidence queries in under 5 milliseconds without invoking the LLM.
+
+---
+
+## 💭 Experience Notes
+
+### My Experience
+I love AI in general and what it can bring to development and efficiency. Integrating AI's was already an integral part in my time in developing or making my own projects and applications. This time though, I was able to kind of get a grasp of where AI integration might actually do best like for sorting out backend requests like these in customer service. It was also super nice to see the limits and the strengths of what AI can actually do when it comes to categories, responses or basically the AI's thinking for certain prompts.
+
+### Key Takeaways
+- **LLMs as Untrusted HTTP Services**: Recognizing that an LLM is a non-deterministic, slow external API that must be bound by strict schemas, timeouts, and validation rules.
+- **Contract-First Engineering**: Specifying closed enums and output shapes in `JOB-CARD.md` and Pydantic before touching prompt files or model calls.
+- **Prompt Engineering as Code**: Versioning prompts as files (`triage-v1.md`) with explicit role boundaries, unsure handling, and few-shot examples rather than hardcoding loose strings in route handlers.
+- **Production Defenses**: Enforcing short timeouts, smart non-retry on 401s, repair retry loops, quarantine logs (`quarantine.jsonl`), and a kill switch (`LLM_ENABLED=false`).
+
