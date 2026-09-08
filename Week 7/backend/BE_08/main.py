@@ -2,11 +2,16 @@ import os
 import sqlite3
 import uuid
 import datetime
-from fastapi import FastAPI, HTTPException, status
+from typing import Optional
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, status, Response, Query
 from fastapi.responses import FileResponse
 from report import get_report_data, generate_html, render_pdf
 
 DB_PATH = "report.db"
+
+class ReportRequest(BaseModel):
+    force: bool = False
 
 app = FastAPI(
     title="PDF Report Generator API",
@@ -37,17 +42,46 @@ def health_check():
 @app.post(
     "/reports",
     status_code=status.HTTP_201_CREATED,
-    summary="Generate a new PDF report",
+    summary="Generate a new PDF report (idempotent for the current day)",
     tags=["Reports"]
 )
-def create_report():
+def create_report(
+    response: Response,
+    request: Optional[ReportRequest] = None,
+    force: bool = False
+):
     """
-    Executes the full reporting pipeline:
-    1. Query: Aggregates SQL data from report.db
-    2. Render: Converts metrics to HTML and prints A4 PDF via headless Chromium
-    3. Store: Saves file to disk and records metadata in SQLite
-    4. Serve: Returns HTTP 201 with the download link
+    Executes the reporting pipeline with daily idempotency:
+    1. Check: If a report was already generated today and force is false, return the existing link with HTTP 200.
+    2. Query: Aggregates SQL data from report.db if generating fresh.
+    3. Render: Converts metrics to HTML and prints A4 PDF via headless Chromium.
+    4. Store: Saves file to disk and records metadata in SQLite.
+    5. Serve: Returns HTTP 201 with the download link.
     """
+    should_force = force or (request.force if request else False)
+
+    # Idempotency check: if not forced, return today's existing report
+    if not should_force:
+        today_str = datetime.date.today().strftime("%Y-%m-%d")
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, path, created_at FROM reports WHERE created_at LIKE ? ORDER BY created_at DESC LIMIT 1",
+            (f"{today_str}%",)
+        )
+        existing = cursor.fetchone()
+        conn.close()
+
+        if existing and os.path.exists(existing["path"]):
+            response.status_code = status.HTTP_200_OK
+            return {
+                "id": existing["id"],
+                "file": f"/reports/{existing['id']}/file",
+                "cached": True
+            }
+
+    # Fresh report generation
     report_id = str(uuid.uuid4())[:8]
     output_path = f"reports/{report_id}.pdf"
 
@@ -70,9 +104,11 @@ def create_report():
     conn.close()
 
     # Step 4: Hand out link to the client
+    response.status_code = status.HTTP_201_CREATED
     return {
         "id": report_id,
-        "file": f"/reports/{report_id}/file"
+        "file": f"/reports/{report_id}/file",
+        "cached": False
     }
 
 @app.get(
