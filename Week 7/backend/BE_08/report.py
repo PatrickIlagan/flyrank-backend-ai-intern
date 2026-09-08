@@ -379,6 +379,11 @@ def render_pdf(html: str, output_path: str = "reports/test.pdf") -> str:
     """
     Launches headless Chromium via Playwright and renders HTML into a print-ready A4 PDF.
     """
+    import sys
+    import asyncio
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     with sync_playwright() as p:
