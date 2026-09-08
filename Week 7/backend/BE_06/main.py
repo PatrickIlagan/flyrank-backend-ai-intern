@@ -24,7 +24,7 @@ inngest_client = inngest.Inngest(
 
 # Pydantic Schemas
 class CreateReportRequest(BaseModel):
-    topic: str
+    topic: Optional[str] = None
 
 class ReportResponse(BaseModel):
     id: str
@@ -44,10 +44,11 @@ async def say_hello(ctx: inngest.Context) -> str:
     return "Hello from the background!"
 
 
-# 3. Inngest Function: make-report (Stage 2)
+# 3. Inngest Function: make-report (Stage 2 and Stage 3)
 @inngest_client.create_function(
     fn_id="make-report",
-    trigger=inngest.TriggerEvent(event="report/requested")
+    trigger=inngest.TriggerEvent(event="report/requested"),
+    retries=2
 )
 async def make_report(ctx: inngest.Context) -> dict:
     report_id = ctx.event.data.get("id")
@@ -58,6 +59,12 @@ async def make_report(ctx: inngest.Context) -> dict:
 
     # Step 2: Build the report and update the store
     def build_report() -> dict:
+        # Stage 3: Simulated failure
+        if topic == "fail":
+            if report_id in reports:
+                reports[report_id]["status"] = "failed"
+            raise Exception("The report oven is broken!")
+
         result_text = f"Comprehensive executive report on '{topic}', generated after in-depth background analysis."
         if report_id in reports:
             reports[report_id]["status"] = "done"
@@ -85,12 +92,19 @@ def health_check():
     tags=["Reports"]
 )
 async def create_report(payload: CreateReportRequest):
+    # Stage 3: Input validation - reject missing topic at the door
+    if not payload.topic or not payload.topic.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Topic is required and cannot be empty"
+        )
+
     report_id = str(uuid.uuid4())[:8]
     
     # Store initial pending state
     reports[report_id] = {
         "id": report_id,
-        "topic": payload.topic,
+        "topic": payload.topic.strip(),
         "status": "pending",
         "result": None
     }

@@ -10,6 +10,12 @@ Part of **FlyRank AI Backend Engineering Internship: Week 7 (Assignment BE_06 / 
 - [x] **Stage 0: Hello, Server**: Create FastAPI server with GET /health returning status 200.
 - [x] **Stage 1: Connect Inngest**: Install Inngest SDK, define `say-hello` function, connect to Inngest Dev Server, and invoke from dashboard.
 - [x] **Stage 2: The Fast Door (Accept Now, Work Later)**: POST /reports returns 202 immediately, sends event to `make-report` (8s sleep + build), and GET /reports/:id polls status until done.
-- [ ] **Stage 3: Jobs Fail, Watch the Retry**: Add failure simulation for topic "fail", configure retries=2, watch exponential backoff, and reject missing topics with 400.
+- [x] **Stage 3: Jobs Fail, Watch the Retry**: Add failure simulation for topic "fail", configure retries=2, watch exponential backoff, and reject missing topics with 400.
 - [ ] **Stage 4: The Clock Knocks (Cron Heartbeat)**: Add scheduled `heartbeat` cron function running every minute (`* * * * *`) and audit report status.
 - [ ] **Stage 5: Publish & Docs**: Complete documentation, add dashboard screenshots, verify clean clone instructions, and publish.
+
+---
+
+## Stage 3 Key Insight: Transient Failure vs Bad Input
+
+A wrong input must be rejected at the door (HTTP 400); only a wrong moment (transient network or service failure) deserves a retry. Retrying a bad input 10 times will never make it valid, but retrying a transient glitch gives the external service time to recover.
