@@ -75,8 +75,29 @@ async def make_report(ctx: inngest.Context) -> dict:
     return build_result
 
 
-# 4. Mount Inngest Endpoint (/api/inngest)
-inngest.fast_api.serve(app, inngest_client, [say_hello, make_report])
+# 4. Inngest Function: heartbeat (Stage 4 Cron Job)
+@inngest_client.create_function(
+    fn_id="heartbeat",
+    trigger=inngest.TriggerCron(cron="* * * * *")
+)
+async def heartbeat(ctx: inngest.Context) -> dict:
+    pending_count = sum(1 for r in reports.values() if r["status"] == "pending")
+    done_count = sum(1 for r in reports.values() if r["status"] == "done")
+    failed_count = sum(1 for r in reports.values() if r["status"] == "failed")
+    
+    summary = f"Heartbeat audit: {pending_count} pending, {done_count} done, {failed_count} failed."
+    print(f"[Cron Heartbeat] {summary}")
+    
+    return {
+        "summary": summary,
+        "pending": pending_count,
+        "done": done_count,
+        "failed": failed_count
+    }
+
+
+# 5. Mount Inngest Endpoint (/api/inngest)
+inngest.fast_api.serve(app, inngest_client, [say_hello, make_report, heartbeat])
 
 
 # 5. REST Endpoints
