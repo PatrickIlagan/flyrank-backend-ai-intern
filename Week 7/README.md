@@ -9,7 +9,7 @@
 ## Tasks
 - [x] **Backend Track: Your First Background Job (BE_06 / Assignment A7)**: Fast 202 endpoint, Inngest background workers, retries, and cron schedules. See `backend/BE_06/`.
 - [x] **Backend Track: PDF Report Generator (BE_08 / Assignment A8)**: SQL aggregation, HTML print CSS layout, Playwright headless Chromium PDF generation, link-based distribution, and daily idempotency. See `backend/BE_08/`.
-- [ ] **Backend Track: Visual AI Workflow System (BE_09)**: Inngest step workflow orchestration, YES/NO decision nodes, OpenAI evaluation, and React Flow visual canvas. See `backend/BE_09/`.
+- [x] **Backend Track: Visual AI Workflow System (BE_09)**: Inngest step workflow orchestration, YES/NO decision nodes, OpenAI evaluation, and React Flow visual canvas. See `backend/BE_09/`.
 - [ ] **AI Fluency Track**: See `fluency/`.
 
 ## Experience Notes
@@ -19,6 +19,9 @@ I have never heard of Inngest before and how it's actually really useful. I've u
 
 ### BE_08: PDF Report Generator
 This is probably one of the most useful assignments ever as generating reports are probably one of the most efficient things ever. I got to learn about chromium headless and its pdf rendering using CSS and HTML which was something a bit more different. It's not the first time I've encountered or used this before but it was definitely an assignment where it made me realize how important it could actually be to those in different departments for companies.
+
+### BE_09: Visual AI Workflow System
+*Pending intern reflection.*
 
 ### Key Takeaways
 - **Decoupling Latency via 202 Accepted and Eventual Consistency**: Moving slow tasks (like 8-second report builds) out of the request-response cycle by returning HTTP 202 Accepted immediately with an ID and polling status later.
@@ -30,6 +33,9 @@ This is probably one of the most useful assignments ever as generating reports a
 - **Headless Chromium Print Engine (BE_08)**: Generating multi-page PDFs using Playwright and Chromium's native print engine with HTML/CSS, providing a far more flexible, modern, and reliable layout system than archaic PDF libraries.
 - **CSS Print Media Essentials (BE_08)**: Using `page-break-inside: avoid` on rows/cards and `thead { display: table-header-group; }` on tables to prevent broken rows and ensure repeating table headers across pages.
 - **Link-Based File Distribution & Daily Idempotency (BE_08)**: Serving heavy binary documents by link (`FileResponse`) rather than JSON payload embedding, and shielding expensive rendering engines behind daily idempotency checks.
+- **Visual AI Step Orchestration (BE_09)**: Representing decision workflows as directed graphs where each node evaluates user context via LLM and branches based on strictly typed YES or NO decisions.
+- **Durable Step-by-Step Traversal with Inngest (BE_09)**: Utilizing Inngest durable steps (`step.run`, `step.sleep`) to execute and memoize each decision step, allowing human visualizers to observe real-time progression while guaranteeing at-least-once execution and crash recovery.
+- **Frontend Reactive Visualization with React Flow (BE_09)**: Connecting custom React Flow nodes with dual output handles, animated flowing dash edges, and live polling to visualize AI decision paths dynamically.
 
 ## Notes
 - Full project code, setup guides, and documentation live in their respective subdirectories.

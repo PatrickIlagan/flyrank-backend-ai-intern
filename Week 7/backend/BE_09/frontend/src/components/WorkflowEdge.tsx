@@ -47,10 +47,12 @@ function WorkflowEdgeComponent({
     <>
       <BaseEdge
         path={edgePath}
+        className={data?.isActive ? 'edge-flow-active' : ''}
         style={{
           ...style,
           stroke: strokeColor,
-          strokeWidth: 2.5
+          strokeWidth: data?.isActive ? 3.5 : 2.5,
+          filter: data?.isActive ? `drop-shadow(0 0 8px ${strokeColor})` : undefined
         }}
       />
       <EdgeLabelRenderer>
@@ -68,7 +70,7 @@ function WorkflowEdgeComponent({
               isYes
                 ? 'bg-emerald-950/90 text-emerald-400 border-emerald-800/80 shadow-emerald-950/50'
                 : 'bg-amber-950/90 text-amber-400 border-amber-800/80 shadow-amber-950/50'
-            }`}
+            } ${data?.isActive ? 'ring-2 ring-white/60 scale-110 shadow-lg' : ''}`}
           >
             {isYes ? 'YES' : 'NO'}
           </div>

@@ -1,5 +1,6 @@
 import uuid
 import datetime
+import asyncio
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,7 @@ import inngest
 import inngest.fast_api
 
 from inngest_client import inngest_client
-from workflow import execute_workflow, runs, DEFAULT_WORKFLOW
+from workflow import execute_workflow, run_workflow_direct, runs, DEFAULT_WORKFLOW
 
 app = FastAPI(
     title="Visual AI Workflow API",
@@ -83,19 +84,31 @@ async def trigger_workflow(payload: ExecuteWorkflowRequest):
         "completed_at": None
     }
 
-    # Dispatch event to Inngest
-    await inngest_client.send(
-        inngest.Event(
-            name="workflow/execute",
-            data={
-                "run_id": run_id,
-                "context": payload.context.strip(),
-                "nodes": active_nodes,
-                "edges": active_edges,
-                "start_node_id": start_id
-            }
+    # Dispatch event to Inngest with fallback to direct async execution
+    try:
+        await inngest_client.send(
+            inngest.Event(
+                name="workflow/execute",
+                data={
+                    "run_id": run_id,
+                    "context": payload.context.strip(),
+                    "nodes": active_nodes,
+                    "edges": active_edges,
+                    "start_node_id": start_id
+                }
+            )
         )
-    )
+    except Exception as e:
+        # Fallback to direct background execution if Inngest dev server is unreachable
+        asyncio.create_task(
+            run_workflow_direct(
+                run_id=run_id,
+                context=payload.context.strip(),
+                nodes=active_nodes,
+                edges=active_edges,
+                start_node_id=start_id
+            )
+        )
 
     return {
         "run_id": run_id,

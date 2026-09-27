@@ -17,16 +17,16 @@ Part of **FlyRank AI Backend Engineering Internship: Week 7 (Assignment BE_09 / 
   - Distinct YES (green) and NO (amber) output handles.
   - Custom edge badges and prompt editing via Node Inspector.
   - LocalStorage auto-save for graph state.
-- [ ] **Phase 3: Build (Core)**:
+- [x] **Phase 3: Build (Core)**:
   - Durable Inngest function `execute_workflow` mapping each node to an Inngest step.
   - LLM evaluates prompt against user input context, returning strictly `YES` or `NO`.
   - Dynamic branching to next node based on matching outgoing edge.
   - Traversal order tracking and run polling API (`GET /api/workflow/runs/{run_id}`).
-- [ ] **Phase 4: Build (Polish)**:
-  - Visual execution states (running, completed-yes, completed-no, skipped).
-  - Animated marching dash active edges.
-  - Slide-out execution logs panel with step latency and reasoning.
-  - Save/load and JSON export/import.
+- [x] **Phase 4: Build (Polish)**:
+  - Visual execution states (running, completed-yes, completed-no, idle).
+  - Animated flowing dash active edges with glow and scaled badges.
+  - Inngest Execution Controller panel with quick presets, active spinner, and step traversal logs.
+  - JSON graph export and import for workflow sharing and backup.
 
 ---
 
@@ -97,3 +97,8 @@ REST API live response at `http://localhost:8000`.
 Interactive canvas with dark styling, custom AI icon, and live backend connection badge.
 
 ![React Flow Canvas](screenshots/frontend_canvas.png)
+
+### 4. Live Inngest Workflow Execution & Step Traversal
+Live workflow execution running through Inngest with real-time illuminated nodes, traversed branches, active status indicators, and step execution logs.
+
+![Live Inngest Execution](screenshots/execution_run.png)

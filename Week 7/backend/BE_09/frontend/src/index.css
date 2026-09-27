@@ -12,6 +12,17 @@ html, body, #root {
   color: #f3f4f6;
 }
 
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.edge-flow-active {
+  stroke-dasharray: 6 4;
+  animation: flow-dash 0.8s linear infinite;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

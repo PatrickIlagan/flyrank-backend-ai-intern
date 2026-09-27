@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   ReactFlow,
   Controls,
@@ -17,7 +17,8 @@ import { DecisionNode } from './components/DecisionNode'
 import { WorkflowEdge } from './components/WorkflowEdge'
 import { NodeInspector } from './components/NodeInspector'
 import { Toolbar } from './components/Toolbar'
-import type { DecisionNodeData } from './types'
+import { ExecutionPanel } from './components/ExecutionPanel'
+import type { DecisionNodeData, WorkflowRun } from './types'
 
 const LOCAL_STORAGE_KEY = 'visual_ai_workflow_graph_v1'
 
@@ -131,6 +132,11 @@ export default function App() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [backendHealth, setBackendHealth] = useState<'checking' | 'online' | 'offline'>('checking')
 
+  // Execution & Live Polling State
+  const [isRunning, setIsRunning] = useState(false)
+  const [currentRun, setCurrentRun] = useState<WorkflowRun | null>(null)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Register custom node and edge types
   const nodeTypes = useMemo(() => ({ decisionNode: DecisionNode }), [])
   const edgeTypes = useMemo(() => ({ workflowEdge: WorkflowEdge }), [])
@@ -146,6 +152,13 @@ export default function App() {
       console.error('Failed to save graph to LocalStorage:', e)
     }
   }, [nodes, edges])
+
+  // Clear polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
+  }, [])
 
   // Periodic Backend Health Check
   const checkHealth = useCallback(() => {
@@ -251,6 +264,7 @@ export default function App() {
       setNodes(DEFAULT_NODES)
       setEdges(DEFAULT_EDGES)
       setSelectedNodeId(null)
+      handleResetStatus()
     }
   }, [setNodes, setEdges])
 
@@ -260,8 +274,214 @@ export default function App() {
       setNodes([])
       setEdges([])
       setSelectedNodeId(null)
+      handleResetStatus()
     }
   }, [setNodes, setEdges])
+
+  // Export Graph as JSON
+  const handleExportGraph = useCallback(() => {
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      nodes,
+      edges
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `ai-workflow-${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [nodes, edges])
+
+  // Import Graph from JSON
+  const handleImportGraph = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const content = event.target?.result as string
+          const parsed = JSON.parse(content)
+          if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+            setNodes(parsed.nodes)
+            setEdges(parsed.edges)
+            setSelectedNodeId(null)
+            handleResetStatus()
+          } else {
+            alert('Invalid workflow JSON file format.')
+          }
+        } catch (err) {
+          alert('Failed to parse JSON file.')
+        }
+      }
+      reader.readAsText(file)
+      e.target.value = ''
+    },
+    [setNodes, setEdges]
+  )
+
+  // Reset Execution Highlighting State
+  const handleResetStatus = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+    setIsRunning(false)
+    setCurrentRun(null)
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          status: 'idle',
+          lastReason: undefined
+        }
+      }))
+    )
+    setEdges((eds) =>
+      eds.map((e) => ({
+        ...e,
+        animated: false,
+        data: {
+          ...e.data,
+          isActive: false
+        }
+      }))
+    )
+  }, [setNodes, setEdges])
+
+  // Execute Workflow via Inngest and Poll Run Status
+  const handleExecute = useCallback(
+    async (contextText: string) => {
+      if (isRunning) return
+      setIsRunning(true)
+
+      // Reset node status to idle first
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          data: {
+            ...n.data,
+            status: 'idle',
+            lastReason: undefined
+          }
+        }))
+      )
+      setEdges((eds) =>
+        eds.map((e) => ({
+          ...e,
+          animated: false,
+          data: {
+            ...e.data,
+            isActive: false
+          }
+        }))
+      )
+
+      try {
+        const response = await fetch('http://localhost:8000/api/workflow/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            context: contextText,
+            nodes,
+            edges
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Execution request failed with status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        const runId = data.run_id
+
+        if (pollingRef.current) clearInterval(pollingRef.current)
+
+        const pollStatus = async () => {
+          try {
+            const res = await fetch(`http://localhost:8000/api/workflow/runs/${runId}`)
+            if (!res.ok) return
+            const runData: WorkflowRun = await res.json()
+            setCurrentRun(runData)
+
+            // Update nodes status based on completed steps & active node
+            const completedMap = new Map<string, { decision: 'YES' | 'NO'; reason: string }>()
+            runData.steps.forEach((step) => {
+              completedMap.set(step.node_id, {
+                decision: step.decision,
+                reason: step.reason
+              })
+            })
+
+            setNodes((nds) =>
+              nds.map((node) => {
+                if (completedMap.has(node.id)) {
+                  const stepInfo = completedMap.get(node.id)!
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      status: stepInfo.decision === 'YES' ? 'completed_yes' : 'completed_no',
+                      lastReason: stepInfo.reason
+                    }
+                  }
+                }
+                if (runData.status === 'running' && runData.active_node_id === node.id) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      status: 'running'
+                    }
+                  }
+                }
+                return node
+              })
+            )
+
+            // Update edges active status
+            setEdges((eds) =>
+              eds.map((edge) => {
+                const isActive = edge.id === runData.active_edge_id
+                return {
+                  ...edge,
+                  animated: isActive,
+                  data: {
+                    ...edge.data,
+                    isActive
+                  }
+                }
+              })
+            )
+
+            // Stop polling when run finishes
+            if (runData.status === 'completed' || runData.status === 'failed') {
+              if (pollingRef.current) {
+                clearInterval(pollingRef.current)
+                pollingRef.current = null
+              }
+              setIsRunning(false)
+            }
+          } catch (err) {
+            console.error('Error polling run status:', err)
+          }
+        }
+
+        await pollStatus()
+        pollingRef.current = setInterval(pollStatus, 500)
+      } catch (err) {
+        console.error('Failed to trigger workflow execution:', err)
+        setIsRunning(false)
+        alert('Failed to start workflow execution. Is the FastAPI backend running on port 8000?')
+      }
+    },
+    [isRunning, nodes, edges, setNodes, setEdges]
+  )
 
   // Currently Selected Node Object
   const selectedNode = useMemo(
@@ -311,10 +531,11 @@ export default function App() {
           </div>
 
           <button
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-sm transition"
-            onClick={() => alert('Phase 3 will execute this workflow through Inngest!')}
+            disabled={isRunning}
+            onClick={() => handleExecute('Our production database crashed and all checkout transactions are failing!')}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-800 disabled:text-gray-500 text-xs font-semibold text-white shadow-sm transition"
           >
-            <Play className="w-3.5 h-3.5 fill-current" /> Run Workflow
+            <Play className="w-3.5 h-3.5 fill-current" /> {isRunning ? 'Running...' : 'Quick Run'}
           </button>
         </div>
       </header>
@@ -326,6 +547,8 @@ export default function App() {
           onAddNode={handleAddNode}
           onResetTemplate={handleResetTemplate}
           onClearGraph={handleClearGraph}
+          onExportGraph={handleExportGraph}
+          onImportGraph={handleImportGraph}
           nodeCount={nodes.length}
           edgeCount={edges.length}
         />
@@ -360,7 +583,16 @@ export default function App() {
             maskColor="rgba(0, 0, 0, 0.6)"
           />
         </ReactFlow>
+
+        {/* Execution Controller & Logs Panel */}
+        <ExecutionPanel
+          isRunning={isRunning}
+          currentRun={currentRun}
+          onExecute={handleExecute}
+          onResetStatus={handleResetStatus}
+        />
       </main>
     </div>
   )
 }
+
