@@ -12,10 +12,10 @@ Part of **FlyRank AI Backend Engineering Internship: Week 7 (Assignment BE_09 / 
   - Python / FastAPI backend with Inngest SDK (`/api/inngest`), OpenAI client, CORS middleware, and `/health`.
   - React + TypeScript + Vite + Tailwind CSS frontend with React Flow (`@xyflow/react`).
   - Working Inngest Dev Server connection on port 8288.
-- [ ] **Phase 2: Foundations**:
+- [x] **Phase 2: Foundations**:
   - Interactive React Flow canvas with custom Decision Nodes.
   - Distinct YES (green) and NO (amber) output handles.
-  - Custom edge badges and prompt editing.
+  - Custom edge badges and prompt editing via Node Inspector.
   - LocalStorage auto-save for graph state.
 - [ ] **Phase 3: Build (Core)**:
   - Durable Inngest function `execute_workflow` mapping each node to an Inngest step.
