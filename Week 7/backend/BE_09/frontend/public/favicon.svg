@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="ai-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+  
+  <!-- App Icon Base -->
+  <rect width="32" height="32" rx="8" fill="url(#bg)" stroke="#3730a3" stroke-width="1.5" />
+  
+  <!-- Flow Connection Lines -->
+  <path d="M16 11 L10 20" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" />
+  <path d="M16 11 L22 20" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" />
+  
+  <!-- Root Node (AI Brain / Decision Diamond) -->
+  <circle cx="16" cy="11" r="3.5" fill="url(#ai-glow)" stroke="#c7d2fe" stroke-width="1.2" />
+  
+  <!-- Branch Nodes -->
+  <!-- Left Node: YES (Green) -->
+  <circle cx="10" cy="20" r="2.8" fill="#10b981" stroke="#a7f3d0" stroke-width="1" />
+  <!-- Right Node: NO (Amber) -->
+  <circle cx="22" cy="20" r="2.8" fill="#f59e0b" stroke="#fde68a" stroke-width="1" />
+</svg>

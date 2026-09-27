@@ -9,6 +9,7 @@
 ## Tasks
 - [x] **Backend Track: Your First Background Job (BE_06 / Assignment A7)**: Fast 202 endpoint, Inngest background workers, retries, and cron schedules. See `backend/BE_06/`.
 - [x] **Backend Track: PDF Report Generator (BE_08 / Assignment A8)**: SQL aggregation, HTML print CSS layout, Playwright headless Chromium PDF generation, link-based distribution, and daily idempotency. See `backend/BE_08/`.
+- [ ] **Backend Track: Visual AI Workflow System (BE_09)**: Inngest step workflow orchestration, YES/NO decision nodes, OpenAI evaluation, and React Flow visual canvas. See `backend/BE_09/`.
 - [ ] **AI Fluency Track**: See `fluency/`.
 
 ## Experience Notes
